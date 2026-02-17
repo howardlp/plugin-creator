@@ -9,10 +9,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6.0.2
 
     - name: Setup node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v6.2
       with:
         node-version: '18'
 
@@ -36,7 +36,7 @@ jobs:
           src/
 
     - name: upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: offline-dev-environment
         path: offline-dev-env.tar.gz
