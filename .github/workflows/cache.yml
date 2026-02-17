@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd plugin_creator/template/{{ cookiecutter.plugin_name }}/frontend
-        npm ci
+        npm install
 
     #- name: Build frontend
     #  run: npm run build
