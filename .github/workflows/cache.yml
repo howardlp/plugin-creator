@@ -17,10 +17,12 @@ jobs:
         node-version: '18'
 
     - name: Install dependencies
-      run: npm ci
+      run: |
+        cd plugin_creator/template/{{ cookiecutter.plugin_name }}/frontend
+        npm ci
 
-    - name: Build frontend
-      run: npm run build
+    #- name: Build frontend
+    #  run: npm run build
 
     - name: Create offline dev package
       run: |
