@@ -1,0 +1,84 @@
+name: Install Node.js packages (Node 18)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  install-node-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Enable Corepack (for pnpm / yarn)
+        run: corepack enable
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            ~/.local/share/pnpm
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}-node-18
+          restore-keys: ${{ runner.os }}-pnpm-node-18-
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}-node-18
+          restore-keys: ${{ runner.os }}-npm-node-18-
+
+      - name: Cache yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}-node-18
+          restore-keys: ${{ runner.os }}-yarn-node-18-
+
+      - name: Find and install frontend dependencies
+        run: |
+          set -euo pipefail
+          FOUND=0
+          # Find any package.json located at .../frontend/package.json inside plugin_creator/template
+          while IFS= read -r -d '' pkg; do
+            FOUND=1
+            dir="$(dirname "$pkg")"
+            echo "---- Installing node deps in $dir ----"
+            if [ -f "$dir/pnpm-lock.yaml" ]; then
+              echo "Using pnpm (pnpm-lock.yaml found)"
+              corepack prepare pnpm@latest --activate
+              (cd "$dir" && pnpm install --frozen-lockfile)
+            elif [ -f "$dir/yarn.lock" ]; then
+              echo "Using yarn (yarn.lock found)"
+              corepack prepare yarn@stable --activate
+              (cd "$dir" && yarn install --frozen-lockfile)
+            elif [ -f "$dir/package-lock.json" ]; then
+              echo "Using npm ci (package-lock.json found)"
+              (cd "$dir" && npm ci --prefer-offline --no-audit --progress=false)
+            else
+              echo "No lockfile; running npm install"
+              (cd "$dir" && npm install --prefer-offline --no-audit --progress=false)
+            fi
+          done < <(find plugin_creator/template -type f -path '*/frontend/package.json' -print0)
+
+          if [ "$FOUND" -eq 0 ]; then
+            echo "No frontend package.json found under plugin_creator/template — nothing to install."
+          fi
+
+      - name: Upload frontend node_modules (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-node-modules
+          path: plugin_creator/template/**/frontend/node_modules
